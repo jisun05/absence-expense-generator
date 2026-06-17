@@ -1,24 +1,26 @@
 from absence_io.auth import get_access_token
 from absence_io.timespans import get_timespans
 from utils.date_utils import get_previous_month
+from expense.transformer import summarize_daily_work_times
 
-year, month = get_previous_month()
 
-print(f"{year}-{month:02d} searching DATA")
 
 
 def main():
+    year, month = get_previous_month()
+
+    print(f"{year}-{month:02d} searching DATA")
     token = get_access_token()
-    result = get_timespans(token, year=year, month=month)
+    result = get_timespans(token=token, year=year, month=month)
 
-    print(f"조회건수: {result.get('count')}")
+    daily_work_times = summarize_daily_work_times(result["data"])
 
-    for item in result.get("data", []):
+    for item in daily_work_times:
         print(
-            item.get("startInTimezone"),
+            item["date"],
+            item["start"].strftime("%H:%M"),
             "->",
-            item.get("endInTimezone"),
-            item.get("type"),
+            item["end"].strftime("%H:%M"),
         )
 
 
