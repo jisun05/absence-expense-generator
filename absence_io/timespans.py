@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime
 import requests
 
 
@@ -38,3 +38,56 @@ def get_timespans(token, year=2026, month=5):
     response.raise_for_status()
 
     return response.json()
+
+
+def calculate_work_time(timespans):
+    """
+    하루별 첫 출근 ~ 마지막 퇴근 시간 계산
+
+    return:
+    {
+        "2026-05-01": {
+            "minutes": 555,
+            "hours": 9,
+            "remaining_minutes": 15
+        },
+        ...
+    }
+    """
+
+    result = {}
+
+    for span in timespans:
+        start = datetime.fromisoformat(
+            span["start"].replace("Z", "+00:00")
+        )
+        end = datetime.fromisoformat(
+            span["end"].replace("Z", "+00:00")
+        )
+
+        day = start.date().isoformat()
+
+        if day not in result:
+            result[day] = {
+                "first": start,
+                "last": end,
+            }
+        else:
+            if start < result[day]["first"]:
+                result[day]["first"] = start
+
+            if end > result[day]["last"]:
+                result[day]["last"] = end
+
+    worked = {}
+
+    for day, value in result.items():
+        minutes = int((value["last"] - value["first"]).total_seconds() // 60)
+
+        worked[day] = {
+            "minutes": minutes,
+            "hours": minutes // 60,
+            "remaining_minutes": minutes % 60,
+        }
+
+    return worked

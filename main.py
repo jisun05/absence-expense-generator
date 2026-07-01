@@ -15,12 +15,14 @@ def main():
 
     daily_work_times = summarize_daily_work_times(result["data"])
 
+
     for item in daily_work_times:
         print(
             item["date"],
             item["start"].strftime("%H:%M"),
             "->",
             item["end"].strftime("%H:%M"),
+            f'({item["hours"]}시간 {item["minutes"]}분)'
         )
 
 
