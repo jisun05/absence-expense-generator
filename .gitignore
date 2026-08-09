@@ -10,3 +10,7 @@ output/
 
 *.xlsx
 !templates/*.xlsx
+
+
+credentials.json
+token.json
