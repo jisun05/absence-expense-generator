@@ -1,12 +1,9 @@
-from PIL import Image
-
 from absence_io.auth import get_access_token
 from absence_io.timespans import get_timespans
 from expense.transformer import summarize_daily_work_times
-from expense.calculator import calculate_meal_reimbursement
-from receipts.drive import get_receipt_files, download_receipt
-from receipts.parser import get_receipt_amount
+from receipts.drive import get_receipt_files
 from receipts.pdf_generator import create_receipt_pdf
+from receipts.processor import process_receipts
 from utils.date_utils import get_previous_month
 
 
@@ -15,14 +12,20 @@ def main():
 
     print(f"{year}-{month:02d} searching DATA")
 
+    # absence.io 근무 기록 조회
     token = get_access_token()
+
     result = get_timespans(
         token=token,
         year=year,
         month=month,
     )
 
-    daily_work_times = summarize_daily_work_times(result["data"])
+    daily_work_times = summarize_daily_work_times(
+        result["data"]
+    )
+
+    print("\nWork times:")
 
     for item in daily_work_times:
         print(
@@ -33,35 +36,35 @@ def main():
             f'({item["hours"]}시간 {item["minutes"]}분)',
         )
 
-    # Google Drive
+    # Google Drive 영수증 목록 조회
     receipt_files = get_receipt_files()
 
-    # 첫 번째 영수증 한 장만 OCR 테스트
-    file = receipt_files[18]
+    # 모든 영수증 OCR + 청구 금액 계산
+    receipt_summary = process_receipts(
+        receipt_files,
+        year,
+        month,
+    )
 
-    buffer = download_receipt(file["id"])
-    image = Image.open(buffer)
+    print("\nMeal expenses:")
 
-    amount = get_receipt_amount(image)
-    reimbursement = calculate_meal_reimbursement(amount)
+    for item in receipt_summary["receipts"]:
+        print(
+            item["date"],
+            f'receipt: €{item["receipt_amount"]:.2f}',
+            f'reimbursement: €{item["reimbursement"]:.2f}',
+        )
 
-    print("\nOCR TEST")
-    print("file:", file["name"])
-    print("receipt amount:", amount)
-    print("reimbursement:", reimbursement)
+    print(
+        "\nTotal reimbursement:",
+        f'€{receipt_summary["total_reimbursement"]:.2f}',
+    )
 
-    image.close()
-    buffer.close()
-
-    print("\nReceipts:")
-    for file in receipt_files:
-        print(file["name"])
-
-    # OCR 테스트 성공 후 다시 켜도 됨
-    # create_receipt_pdf(
-    #     receipt_files,
-    #     f"output/receipts_{year}_{month:02d}.pdf"
-    # )
+    # 영수증 PDF 생성
+    create_receipt_pdf(
+        receipt_files,
+        f"output/receipts_{year}_{month:02d}.pdf",
+    )
 
 
 if __name__ == "__main__":
