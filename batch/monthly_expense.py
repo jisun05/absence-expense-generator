@@ -5,7 +5,9 @@ from receipts.drive import get_receipt_files
 from receipts.pdf_generator import create_receipt_pdf
 from receipts.processor import process_receipts
 from utils.date_utils import get_previous_month
-
+from database.repository import save_work_record
+from database.repository import save_receipt
+from database.repository import save_expense
 
 def run_monthly_expense():
 
@@ -35,6 +37,10 @@ def run_monthly_expense():
         result["data"]
     )
 
+    # PostgreSQL에 근무 기록 저장
+    for work_day in daily_work_times:
+        save_work_record(work_day)
+
     print("\nWork times:")
 
     for item in daily_work_times:
@@ -43,8 +49,7 @@ def run_monthly_expense():
             item["start"].strftime("%H:%M"),
             "->",
             item["end"].strftime("%H:%M"),
-            f"({item['hours']}시간 "
-            f"{item['minutes']}분)",
+            f"({item['duration_text']})",
         )
 
 
@@ -69,6 +74,16 @@ def run_monthly_expense():
         month=month,
     )
 
+    for receipt in receipt_summary["receipts"]:
+        save_receipt(receipt)
+
+    # PostgreSQL에 식대 청구 결과 저장
+    for receipt in receipt_summary["receipts"]:
+        save_expense({
+            "date": receipt["date"],
+            "receipt_amount": receipt["receipt_amount"],
+            "reimbursement": receipt["reimbursement"],
+        })
 
     # 5. 식대 청구 결과 출력
 

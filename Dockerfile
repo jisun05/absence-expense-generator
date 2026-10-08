@@ -15,6 +15,7 @@ COPY absence_io ./absence_io
 COPY expense ./expense
 COPY receipts ./receipts
 COPY utils ./utils
+COPY database ./database
 COPY tests ./tests
 COPY main.py .
 

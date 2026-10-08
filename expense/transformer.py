@@ -35,4 +35,11 @@ def summarize_daily_work_times(timespans):
         value["hours"] = total_minutes // 60
         value["minutes"] = total_minutes % 60
 
+        if value["minutes"] == 0:
+            value["duration_text"] = f"{value['hours']}시간"
+        else:
+            value["duration_text"] = (
+                f"{value['hours']}시간 {value['minutes']}분"
+            )
+
     return sorted(daily.values(), key=lambda x: x["date"])
