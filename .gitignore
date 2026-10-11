@@ -1,16 +1,26 @@
+# IDE
 .idea/
+
+# Python virtual environment
 .venv/
 
+# Environment variables
 .env
+.env.*
+!.env.example
 
+# Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
 
+# Generated files
 output/
 
+# Excel files
 *.xlsx
 !templates/*.xlsx
 
-
+# Google API credentials
 credentials.json
 token.json
