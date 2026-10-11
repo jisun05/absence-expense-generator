@@ -1,3 +1,4 @@
+import os
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from copy import copy
@@ -9,9 +10,20 @@ from openpyxl.worksheet.cell_range import CellRange
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_PATH = (
-    PROJECT_ROOT / "templates" / "travel_expense_template.xlsx"
-)
+
+if os.getenv("GITHUB_ACTIONS") == "true":
+    TEMPLATE_PATH = (
+        PROJECT_ROOT
+        / "templates"
+        / "travel_expense_template_public.xlsx"
+    )
+else:
+    TEMPLATE_PATH = (
+        PROJECT_ROOT
+        / "templates"
+        / "travel_expense_template.xlsx"
+    )
+
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
 SHEET_NAME = "Reisekosten"
