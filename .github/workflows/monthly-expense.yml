@@ -27,4 +27,5 @@ jobs:
         env:
           ABSENCE_CLIENT_ID: ${{ secrets.ABSENCE_CLIENT_ID }}
           ABSENCE_CLIENT_SECRET: ${{ secrets.ABSENCE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_RECEIPT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_RECEIPT_FOLDER_ID }}
         run: python main.py
