@@ -1,13 +1,18 @@
+import os
 import re
 from decimal import Decimal
-import pytesseract
 from datetime import datetime
+
+import pytesseract
 
 
 # Tesseract 설치 경로
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+# 환경 변수가 설정된 경우 해당 경로를 사용
+# 그렇지 않으면 시스템의 기본 실행 경로를 사용한다.
+tesseract_path = os.getenv("TESSERACT_CMD")
+
+if tesseract_path:
+    pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 
 DATE_PATTERNS = [
@@ -27,22 +32,19 @@ AMOUNT_PATTERNS = [
     r"Total Due[:\s-]*([0-9]+[,.][0-9]{2})",
 
     # REWE
-    #r"SUMME\s+(?:EUR\s+)?([0-9]+[,.][0-9]{2})",
-    #r"Betrag\s+EUR\s+([0-9]+[,.][0-9]{2})",
-
+    # r"SUMME\s+(?:EUR\s+)?([0-9]+[,.][0-9]{2})",
+    # r"Betrag\s+EUR\s+([0-9]+[,.][0-9]{2})",
 ]
 
 
 def extract_text_from_image(image):
-    """영수증 이미지 → 문자열"""
     return pytesseract.image_to_string(
         image,
-        lang="eng",
+        lang="eng+deu",
     )
 
 
 def extract_receipt_amount(text):
-    """OCR 문자열 → 실제 결제 금액"""
 
     for pattern in AMOUNT_PATTERNS:
         match = re.search(
@@ -58,28 +60,24 @@ def extract_receipt_amount(text):
     raise ValueError("Could not find receipt amount")
 
 
-
 def extract_receipt_date(text):
-    """date"""
 
     for pattern in DATE_PATTERNS:
-        match = re.search(
-            pattern,
-            text,
-        )
+        match = re.search(pattern, text)
 
         if not match:
             continue
 
         date_text = match.group(1)
+
         for date_format in (
-                "%d.%m.%Y",
-                "%d/%m/%Y",
-                "%d-%m-%Y",
-                "%Y-%m-%d",
-                "%d.%m.%y",
-                "%d/%m/%y",
-                "%d-%m-%y",
+            "%d.%m.%Y",
+            "%d/%m/%Y",
+            "%d-%m-%Y",
+            "%Y-%m-%d",
+            "%d.%m.%y",
+            "%d/%m/%y",
+            "%d-%m-%y",
         ):
             try:
                 return datetime.strptime(
@@ -92,14 +90,12 @@ def extract_receipt_date(text):
     raise ValueError("Could not find receipt date")
 
 
-
 def get_receipt_amount(image):
-    """영수증 이미지 to 실제 결제 금액"""
 
     text = extract_text_from_image(image)
-    print("===== OCR TEXT =====")
+
+    print("=OCR TEXT=")
     print(text)
-    print("====================")
+
 
     return extract_receipt_amount(text)
-
