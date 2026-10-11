@@ -5,26 +5,20 @@ from receipts.drive import get_receipt_files
 from receipts.pdf_generator import create_receipt_pdf
 from receipts.processor import process_receipts
 from utils.date_utils import get_previous_month
-from database.repository import save_work_record
-from database.repository import save_receipt
-from database.repository import save_expense
+
+# PostgreSQL 저장
+# from database.repository import save_work_record
+# from database.repository import save_receipt
+# from database.repository import save_expense
+
 from reports.excel_generator import create_expense_excel
+
 
 def run_monthly_expense():
 
-
-    # 1. 이전 달 구하기
-
-
     year, month = get_previous_month()
 
-    print(
-        f"{year}-{month:02d} searching DATA"
-    )
-
-
-    # 2. absence.io 근무 기록 가져오기
-
+    print(f"{year}-{month:02d} searching DATA")
 
     token = get_access_token()
 
@@ -39,8 +33,10 @@ def run_monthly_expense():
     )
 
     # PostgreSQL에 근무 기록 저장
-    for work_day in daily_work_times:
-        save_work_record(work_day)
+    #  DB 연결 시
+    #
+    # for work_day in daily_work_times:
+    #     save_work_record(work_day)
 
     print("\nWork times:")
 
@@ -54,19 +50,12 @@ def run_monthly_expense():
         )
 
 
-    # 3. Google Drive 영수증 가져오기
-
-
     receipt_files = get_receipt_files()
 
     print(
         f"\nFound {len(receipt_files)} "
-        f"receipt files in Google Drive."
+        "receipt files in Google Drive."
     )
-
-
-    # 4. 근무 기록 , 영수증 처리
-
 
     receipt_summary = process_receipts(
         receipt_files=receipt_files,
@@ -75,18 +64,21 @@ def run_monthly_expense():
         month=month,
     )
 
-    for receipt in receipt_summary["receipts"]:
-        save_receipt(receipt)
+    # PostgreSQL에 영수증 저장
+    # DB 연결 시 주석 해제
+    #
+    # for receipt in receipt_summary["receipts"]:
+    #     save_receipt(receipt)
 
     # PostgreSQL에 식대 청구 결과 저장
-    for receipt in receipt_summary["receipts"]:
-        save_expense({
-            "date": receipt["date"],
-            "receipt_amount": receipt["receipt_amount"],
-            "reimbursement": receipt["reimbursement"],
-        })
-
-    # 5. 식대 청구 결과 출력
+    # 나중에 DB 연결 시 주석 해제
+    #
+    # for receipt in receipt_summary["receipts"]:
+    #     save_expense({
+    #         "date": receipt["date"],
+    #         "receipt_amount": receipt["receipt_amount"],
+    #         "reimbursement": receipt["reimbursement"],
+    #     })
 
 
     print("\nMeal expenses:")
@@ -105,9 +97,6 @@ def run_monthly_expense():
     )
 
 
-    # 6. 청구 대상 영수증만 PDF 생성
-
-
     receipt_files_for_pdf = [
         {
             "id": item["file_id"],
@@ -119,9 +108,10 @@ def run_monthly_expense():
     if receipt_files_for_pdf:
         create_receipt_pdf(
             receipt_files_for_pdf,
-            f"output/receipts_"
-            f"{year}_{month:02d}.pdf",
+            f"output/receipts_{year}_{month:02d}.pdf",
         )
+
+        print("\nReceipt PDF created successfully.")
 
     else:
         print(
@@ -129,11 +119,11 @@ def run_monthly_expense():
             "PDF was not created."
         )
 
-    # 7. 월별 식대 정산 엑셀 생성
-
     create_expense_excel(
         year=year,
         month=month,
         daily_work_times=daily_work_times,
         receipts=receipt_summary["receipts"],
     )
+
+    print("\nExpense Excel created successfully.")
