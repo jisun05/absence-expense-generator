@@ -1,0 +1,28 @@
+name: Monthly Expense Generator
+
+on:
+  schedule:
+    # 매월 5일 오전 9시 (독일 겨울철 기준)
+    - cron: '0 8 5 * *'
+  workflow_dispatch:
+
+jobs:
+  generate-expense:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run expense generator
+        run: python main.py
