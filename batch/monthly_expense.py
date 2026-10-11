@@ -8,6 +8,7 @@ from utils.date_utils import get_previous_month
 from database.repository import save_work_record
 from database.repository import save_receipt
 from database.repository import save_expense
+from reports.excel_generator import create_expense_excel
 
 def run_monthly_expense():
 
@@ -64,7 +65,7 @@ def run_monthly_expense():
     )
 
 
-    # 4. 근무 기록 + 영수증 처리
+    # 4. 근무 기록 , 영수증 처리
 
 
     receipt_summary = process_receipts(
@@ -127,3 +128,12 @@ def run_monthly_expense():
             "\nNo eligible receipts found. "
             "PDF was not created."
         )
+
+    # 7. 월별 식대 정산 엑셀 생성
+
+    create_expense_excel(
+        year=year,
+        month=month,
+        daily_work_times=daily_work_times,
+        receipts=receipt_summary["receipts"],
+    )
