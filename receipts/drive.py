@@ -1,13 +1,12 @@
 import io
 import os
-
 from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-
+import json
 
 load_dotenv()
 
@@ -19,27 +18,34 @@ TOKEN_FILE = "token.json"
 
 def get_drive_service():
     creds = None
+    token_json = os.getenv("GOOGLE_TOKEN_JSON")
 
-    if os.path.exists(TOKEN_FILE):
+    if token_json:
+        creds = Credentials.from_authorized_user_info(
+            json.loads(token_json),
+            SCOPES,
+        )
+    elif os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(
             TOKEN_FILE,
             SCOPES,
         )
 
-    if not creds or not creds.valid:
+    if not creds:
+        raise RuntimeError(
+            "Google OAuth token is not configured."
+        )
 
-        if creds and creds.expired and creds.refresh_token:
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
             creds.refresh(Request())
-
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE,
-                SCOPES,
+            raise RuntimeError(
+                "Google OAuth token is invalid or cannot be refreshed."
             )
 
-            creds = flow.run_local_server(port=0)
-
-        with open(TOKEN_FILE, "w") as token:
+    if not token_json:
+        with open(TOKEN_FILE, "w", encoding="utf-8") as token:
             token.write(creds.to_json())
 
     return build(
