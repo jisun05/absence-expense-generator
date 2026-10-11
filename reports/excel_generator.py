@@ -9,7 +9,9 @@ from openpyxl.worksheet.cell_range import CellRange
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_PATH = PROJECT_ROOT / "templates" / "travel_expense_template.xlsx"
+TEMPLATE_PATH = (
+    PROJECT_ROOT / "templates" / "travel_expense_template.xlsx"
+)
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
 SHEET_NAME = "Reisekosten"
@@ -69,15 +71,21 @@ def normalize_time(value: Any) -> time | None:
 
     if isinstance(value, timedelta):
         total_seconds = int(value.total_seconds()) % 86400
+
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         seconds = total_seconds % 60
+
         return time(hours, minutes, seconds)
 
     if isinstance(value, str):
         value = value.strip()
 
-        for fmt in ("%H:%M", "%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        for fmt in (
+            "%H:%M",
+            "%H:%M:%S",
+            "%Y-%m-%d %H:%M:%S",
+        ):
             try:
                 return datetime.strptime(value, fmt).time()
             except ValueError:
@@ -101,11 +109,15 @@ def normalize_money(value: Any) -> float:
         return 0.0
 
 
-def get_first_value(record: dict, keys: tuple[str, ...]) -> Any:
+def get_first_value(
+    record: dict,
+    keys: tuple[str, ...],
+) -> Any:
     """Return the first non-None value."""
 
     for key in keys:
         value = record.get(key)
+
         if value is not None:
             return value
 
@@ -113,26 +125,52 @@ def get_first_value(record: dict, keys: tuple[str, ...]) -> Any:
 
 
 def get_work_date(work_day: dict) -> date | None:
+    """Get the date from a work record."""
+
     return normalize_date(work_day.get("date"))
 
 
 def get_start_time(work_day: dict) -> time | None:
+    """Get the start time from a work record."""
+
     value = get_first_value(
         work_day,
-        ("start_time", "start", "from", "startTime", "time_start"),
+        (
+            "start_time",
+            "start",
+            "from",
+            "startTime",
+            "time_start",
+        ),
     )
+
     return normalize_time(value)
 
 
 def get_end_time(work_day: dict) -> time | None:
+    """Get the end time from a work record."""
+
     value = get_first_value(
         work_day,
-        ("end_time", "end", "to", "endTime", "time_end"),
+        (
+            "end_time",
+            "end",
+            "to",
+            "endTime",
+            "time_end",
+        ),
     )
+
     return normalize_time(value)
 
 
 def get_work_duration_days(work_day: dict) -> float:
+    """
+    Return elapsed time as a fraction of one day.
+
+    Excel stores durations as fractions of a day.
+    For example, 8 hours 30 minutes = 8.5 / 24.
+    """
 
     start_time = get_start_time(work_day)
     end_time = get_end_time(work_day)
@@ -150,6 +188,7 @@ def get_work_duration_days(work_day: dict) -> float:
             + end_time.second
         )
 
+        # Handle work that crosses midnight.
         if end_seconds < start_seconds:
             end_seconds += 24 * 3600
 
@@ -157,10 +196,15 @@ def get_work_duration_days(work_day: dict) -> float:
 
         return elapsed_seconds / 86400
 
-    # Fallback: convert an existing decimal-hour value to Excel duration.
+    # Fallback: convert existing decimal hours to Excel duration.
     existing_hours = get_first_value(
         work_day,
-        ("hours", "work_hours", "duration_hours", "total_hours"),
+        (
+            "hours",
+            "work_hours",
+            "duration_hours",
+            "total_hours",
+        ),
     )
 
     if existing_hours is None:
@@ -170,19 +214,35 @@ def get_work_duration_days(work_day: dict) -> float:
 
 
 def get_receipt_date(receipt: dict) -> date | None:
+    """Get the date from a receipt."""
+
     return normalize_date(receipt.get("date"))
 
 
 def get_receipt_amount(receipt: dict) -> float:
+    """Get the reimbursable amount from a receipt."""
+
     value = get_first_value(
         receipt,
-        ("reimbursement", "amount", "total", "receipt_amount"),
+        (
+            "reimbursement",
+            "amount",
+            "total",
+            "receipt_amount",
+        ),
     )
+
     return normalize_money(value)
 
 
-def build_receipts_by_date(receipts: list[dict]) -> dict[date, dict]:
-    """Index receipts by date and combine amounts for duplicate dates."""
+def build_receipts_by_date(
+    receipts: list[dict],
+) -> dict[date, dict]:
+    """
+    Index receipts by date.
+
+    If multiple receipts have the same date, combine their amounts.
+    """
 
     receipts_by_date: dict[date, dict] = {}
 
@@ -206,7 +266,12 @@ def build_receipts_by_date(receipts: list[dict]) -> dict[date, dict]:
     return receipts_by_date
 
 
-def set_cell_value(ws, row: int, col: int, value: Any) -> None:
+def set_cell_value(
+    ws,
+    row: int,
+    col: int,
+    value: Any,
+) -> None:
     """Write to a cell, rejecting read-only merged cells."""
 
     cell = ws.cell(row=row, column=col)
@@ -219,8 +284,12 @@ def set_cell_value(ws, row: int, col: int, value: Any) -> None:
     cell.value = value
 
 
-def copy_row_style(ws, source_row: int, target_row: int) -> None:
-    """Copy formatting from a template data row to another row."""
+def copy_row_style(
+    ws,
+    source_row: int,
+    target_row: int,
+) -> None:
+    """Copy formatting from one row to another."""
 
     for col in range(1, ws.max_column + 1):
         source = ws.cell(source_row, col)
@@ -229,47 +298,68 @@ def copy_row_style(ws, source_row: int, target_row: int) -> None:
         if source.has_style:
             target._style = copy(source._style)
 
-        target.font = copy(source.font)
-        target.fill = copy(source.fill)
-        target.border = copy(source.border)
-        target.alignment = copy(source.alignment)
-        target.protection = copy(source.protection)
-        target.number_format = source.number_format
+        if source.number_format:
+            target.number_format = source.number_format
 
-    source_height = ws.row_dimensions[source_row].height
-    if source_height is not None:
-        ws.row_dimensions[target_row].height = source_height
+        if source.alignment:
+            target.alignment = copy(source.alignment)
 
-def clear_data_area(ws, first_row: int, last_row: int) -> None:
-    """Clear cell values in the specified data area, preserving formatting."""
+        if source.protection:
+            target.protection = copy(source.protection)
+
+    ws.row_dimensions[target_row].height = (
+        ws.row_dimensions[source_row].height
+    )
+
+
+def clear_data_area(
+    ws,
+    first_row: int,
+    last_row: int,
+) -> None:
+    """Clear old values while preserving cell formatting."""
 
     for row in range(first_row, last_row + 1):
         for col in range(1, ws.max_column + 1):
             cell = ws.cell(row=row, column=col)
+
             if not isinstance(cell, MergedCell):
                 cell.value = None
 
-def move_footer(ws, extra_rows: int) -> None:
-    """Move summary/footer rows down while preserving merged ranges."""
+
+def move_footer(
+    ws,
+    extra_rows: int,
+) -> None:
+    """Move footer rows and their merged ranges down."""
 
     if extra_rows <= 0:
         return
 
     footer_merges = [
         str(merged_range)
-        for merged_range in list(ws.merged_cells.ranges)
-        if CellRange(str(merged_range)).min_row >= ORIGINAL_TOTAL_ROW
+        for merged_range in ws.merged_cells.ranges
+        if CellRange(str(merged_range)).min_row
+        >= ORIGINAL_TOTAL_ROW
     ]
 
+    # Unmerge footer ranges before inserting rows.
     for merged_range in footer_merges:
         ws.unmerge_cells(merged_range)
 
-    ws.insert_rows(ORIGINAL_TOTAL_ROW, amount=extra_rows)
+    # Insert additional data rows.
+    ws.insert_rows(
+        ORIGINAL_TOTAL_ROW,
+        amount=extra_rows,
+    )
 
+    # Restore merged ranges at their new positions.
     for merged_range in footer_merges:
         shifted_range = CellRange(merged_range)
         shifted_range.shift(row_shift=extra_rows)
+
         ws.merge_cells(str(shifted_range))
+
 
 def write_summary(
     ws,
@@ -277,15 +367,25 @@ def write_summary(
     last_data_row: int,
     final_amount_row: int,
 ) -> None:
-    """Write expense summary without total working hours."""
+    """Write the expense summary without total working hours."""
 
-    # Keep the summary row label
-    set_cell_value(ws, total_row, 5, "Gesamt EUR")
+    # Summary label.
+    set_cell_value(
+        ws,
+        total_row,
+        5,
+        "Gesamt EUR",
+    )
 
-    # Remove total working hours only
-    set_cell_value(ws, total_row, HOURS_COL, None)
+    # Do not display total working hours.
+    set_cell_value(
+        ws,
+        total_row,
+        HOURS_COL,
+        None,
+    )
 
-    # Meal expense total
+    # Calculate total meal expenses and daily totals.
     if last_data_row >= DATA_START_ROW:
         set_cell_value(
             ws,
@@ -301,14 +401,36 @@ def write_summary(
             f"=SUM(O{DATA_START_ROW}:O{last_data_row})",
         )
     else:
-        set_cell_value(ws, total_row, MEAL_COL, "=0")
-        set_cell_value(ws, total_row, DAILY_TOTAL_COL, "=0")
+        set_cell_value(
+            ws,
+            total_row,
+            MEAL_COL,
+            "=0",
+        )
 
-    # Final amount section
-    set_cell_value(ws, final_amount_row, 10, "Summe/Sum")
-    set_cell_value(ws, final_amount_row, 12, "(EUR)")
+        set_cell_value(
+            ws,
+            total_row,
+            DAILY_TOTAL_COL,
+            "=0",
+        )
 
-    # Use the total meal amount for the final reimbursement amount
+    # Final reimbursement amount section.
+    set_cell_value(
+        ws,
+        final_amount_row,
+        10,
+        "Summe/Sum",
+    )
+
+    set_cell_value(
+        ws,
+        final_amount_row,
+        12,
+        "(EUR)",
+    )
+
+    # Use total meal expenses as the final reimbursement amount.
     set_cell_value(
         ws,
         final_amount_row,
@@ -316,6 +438,22 @@ def write_summary(
         f"=N{total_row}",
     )
 
+    # Display the final amount as euros.
+    ws.cell(
+        row=final_amount_row,
+        column=14,
+    ).number_format = '#,##0.00 €'
+
+    # Display the meal total as euros.
+    ws.cell(
+        row=total_row,
+        column=MEAL_COL,
+    ).number_format = '#,##0.00 €'
+
+    ws.cell(
+        row=total_row,
+        column=DAILY_TOTAL_COL,
+    ).number_format = '#,##0.00 €'
 
 
 def create_expense_excel(
@@ -326,6 +464,7 @@ def create_expense_excel(
 ) -> Path:
     """Generate the monthly expense Excel file."""
 
+    # Check whether the Excel template exists.
     if not TEMPLATE_PATH.exists():
         raise FileNotFoundError(
             f"Excel template not found: {TEMPLATE_PATH}"
@@ -334,9 +473,19 @@ def create_expense_excel(
     if not 1 <= month <= 12:
         raise ValueError(f"Invalid month: {month}")
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    output_path = OUTPUT_DIR / f"expenses_{year}_{month:02d}.xlsx"
+    output_path = (
+        OUTPUT_DIR / f"expenses_{year}_{month:02d}.xlsx"
+    )
+
+    print(
+        f"Generating expense Excel for "
+        f"{year}-{month:02d}..."
+    )
 
     # Index receipts by date.
     receipts_by_date = build_receipts_by_date(receipts)
@@ -350,10 +499,17 @@ def create_expense_excel(
         if work_date is None:
             continue
 
-        if work_date.year == year and work_date.month == month:
-            monthly_work_times.append((work_date, work_day))
+        if (
+            work_date.year == year
+            and work_date.month == month
+        ):
+            monthly_work_times.append(
+                (work_date, work_day)
+            )
 
-    monthly_work_times.sort(key=lambda item: item[0])
+    monthly_work_times.sort(
+        key=lambda item: item[0]
+    )
 
     # Include only work records with receipts on the same date.
     eligible_work_times = []
@@ -362,7 +518,9 @@ def create_expense_excel(
         receipt = receipts_by_date.get(work_date)
 
         if receipt is not None:
-            eligible_work_times.append((work_date, work_day, receipt))
+            eligible_work_times.append(
+                (work_date, work_day, receipt)
+            )
 
     if len(eligible_work_times) > MAX_WORK_DAYS:
         raise ValueError(
@@ -370,143 +528,221 @@ def create_expense_excel(
             f"{len(eligible_work_times)}"
         )
 
+    print(
+        f"Eligible work days: "
+        f"{len(eligible_work_times)}"
+    )
+
+    # Load the Excel template.
     workbook = load_workbook(TEMPLATE_PATH)
 
-    if SHEET_NAME not in workbook.sheetnames:
-        available_sheets = workbook.sheetnames
+    try:
+        if SHEET_NAME not in workbook.sheetnames:
+            available_sheets = workbook.sheetnames
+
+            raise ValueError(
+                f"Worksheet '{SHEET_NAME}' not found. "
+                f"Available sheets: {available_sheets}"
+            )
+
+        ws = workbook[SHEET_NAME]
+
+        # Move footer when more than 14 data rows are needed.
+        extra_rows = max(
+            0,
+            len(eligible_work_times)
+            - ORIGINAL_DATA_CAPACITY,
+        )
+
+        if extra_rows:
+            move_footer(
+                ws,
+                extra_rows,
+            )
+
+        total_row = ORIGINAL_TOTAL_ROW + extra_rows
+
+        final_amount_row = (
+            ORIGINAL_FINAL_AMOUNT_ROW + extra_rows
+        )
+
+        # Clear old data without removing cell formatting.
+        last_clear_row = max(
+            total_row - 1,
+            DATA_START_ROW + MAX_WORK_DAYS - 1,
+        )
+
+        clear_data_area(
+            ws,
+            DATA_START_ROW,
+            last_clear_row,
+        )
+
+        # Copy the template data-row formatting to additional rows.
+        for index in range(len(eligible_work_times)):
+            row = DATA_START_ROW + index
+
+            if row != DATA_START_ROW:
+                copy_row_style(
+                    ws,
+                    DATA_START_ROW,
+                    row,
+                )
+
+        # Write work and receipt information.
+        for index, (
+            work_date,
+            work_day,
+            receipt,
+        ) in enumerate(eligible_work_times):
+
+            row = DATA_START_ROW + index
+
+            # Date.
+            set_cell_value(
+                ws,
+                row,
+                DATE_COL,
+                datetime.combine(
+                    work_date,
+                    time.min,
+                ),
+            )
+
+            ws.cell(
+                row=row,
+                column=DATE_COL,
+            ).number_format = "DD.MM.YYYY"
+
+            # Location.
+            set_cell_value(
+                ws,
+                row,
+                LOCATION_COL,
+                "Eschborn",
+            )
+
+            # Start time.
+            start_time = get_start_time(work_day)
+
+            if start_time is not None:
+                set_cell_value(
+                    ws,
+                    row,
+                    START_TIME_COL,
+                    start_time,
+                )
+
+                ws.cell(
+                    row=row,
+                    column=START_TIME_COL,
+                ).number_format = "HH:MM"
+
+            # End time.
+            end_time = get_end_time(work_day)
+
+            if end_time is not None:
+                set_cell_value(
+                    ws,
+                    row,
+                    END_TIME_COL,
+                    end_time,
+                )
+
+                ws.cell(
+                    row=row,
+                    column=END_TIME_COL,
+                ).number_format = "HH:MM"
+
+            # Working duration.
+            duration = get_work_duration_days(work_day)
+
+            set_cell_value(
+                ws,
+                row,
+                HOURS_COL,
+                duration,
+            )
+
+            ws.cell(
+                row=row,
+                column=HOURS_COL,
+            ).number_format = "[h]:mm"
+
+            # Meal reimbursement.
+            meal_amount = get_receipt_amount(receipt)
+
+            set_cell_value(
+                ws,
+                row,
+                MEAL_COL,
+                meal_amount,
+            )
+
+            ws.cell(
+                row=row,
+                column=MEAL_COL,
+            ).number_format = '#,##0.00 €'
+
+            # Daily total.
+            # Apply this formula to every eligible data row.
+            set_cell_value(
+                ws,
+                row,
+                DAILY_TOTAL_COL,
+                f"=F{row}+H{row}+J{row}+L{row}+N{row}",
+            )
+
+            ws.cell(
+                row=row,
+                column=DAILY_TOTAL_COL,
+            ).number_format = '#,##0.00 €'
+
+        # Calculate the last populated data row.
+        # If there are no eligible days, this is one row before
+        # the first data row.
+        last_data_row = (
+            DATA_START_ROW
+            + len(eligible_work_times)
+            - 1
+        )
+
+        # Write the summary and final reimbursement amount.
+        write_summary(
+            ws=ws,
+            total_row=total_row,
+            last_data_row=last_data_row,
+            final_amount_row=final_amount_row,
+        )
+
+        # Ask Excel to recalculate formulas when opening the file.
+        try:
+            workbook.calculation.fullCalcOnLoad = True
+            workbook.calculation.forceFullCalc = True
+            workbook.calculation.calcMode = "auto"
+        except AttributeError:
+            pass
+
+        # Save the completed workbook.
+        workbook.save(output_path)
+
+    finally:
         workbook.close()
 
-        raise ValueError(
-            f"Worksheet '{SHEET_NAME}' not found. "
-            f"Available sheets: {available_sheets}"
-        )
-
-    ws = workbook[SHEET_NAME]
-
-    # Move footer when more than 14 data rows are needed.
-    extra_rows = max(
-        0,
-        len(eligible_work_times) - ORIGINAL_DATA_CAPACITY,
-    )
-
-    if extra_rows:
-        move_footer(ws, extra_rows)
-
-    total_row = ORIGINAL_TOTAL_ROW + extra_rows
-    final_amount_row = ORIGINAL_FINAL_AMOUNT_ROW + extra_rows
-
-    # Clear only the data area. Do not clear the summary/footer.
-    last_data_capacity_row = DATA_START_ROW + MAX_WORK_DAYS - 1
-    clear_data_area(
-        ws,
-        DATA_START_ROW,
-        min(last_data_capacity_row, total_row - 1),
-    )
-
-    # Apply the first data row's formatting consistently to every data row.
-
-    for index in range(len(eligible_work_times)):
-        row = DATA_START_ROW + index
-        if row != DATA_START_ROW:
-            copy_row_style(ws, DATA_START_ROW, row)
-
-    # Write work and receipt information.
-    for index, (work_date, work_day, receipt) in enumerate(
-        eligible_work_times
-    ):
-        row = DATA_START_ROW + index
-
-        # Date
-        set_cell_value(
-            ws,
-            row,
-            DATE_COL,
-            datetime.combine(work_date, time.min),
-        )
-        ws.cell(row=row, column=DATE_COL).number_format = "DD.MM.YYYY"
-
-        # Location
-        set_cell_value(ws, row, LOCATION_COL, "Eschborn")
-
-        # von/from
-        start_time = get_start_time(work_day)
-
-        if start_time is not None:
-            set_cell_value(ws, row, START_TIME_COL, start_time)
-            ws.cell(row=row, column=START_TIME_COL).number_format = "HH:MM"
-
-        # bis/to
-        end_time = get_end_time(work_day)
-
-        if end_time is not None:
-            set_cell_value(ws, row, END_TIME_COL, end_time)
-            ws.cell(row=row, column=END_TIME_COL).number_format = "HH:MM"
-
-        # Stunden: duration stored as Excel time fraction.
-        duration = get_work_duration_days(work_day)
-
-        set_cell_value(ws, row, HOURS_COL, duration)
-        ws.cell(row=row, column=HOURS_COL).number_format = "[h]:mm"
-
-        # Meal reimbursement.
-        meal_amount = get_receipt_amount(receipt)
-
-        set_cell_value(ws, row, MEAL_COL, meal_amount)
-        ws.cell(row=row, column=MEAL_COL).number_format = '#,##0.00 €'
-
-        # Daily total: keep this inside the loop so every day is filled.
-        set_cell_value(
-            ws,
-            row,
-            DAILY_TOTAL_COL,
-            f"=F{row}+H{row}+J{row}+L{row}+N{row}",
-        )
-        ws.cell(
-            row=row,
-            column=DAILY_TOTAL_COL,
-        ).number_format = '#,##0.00 €'
-
-    last_data_row = DATA_START_ROW + len(eligible_work_times) - 1
-
-    # Daily total (Gesamt EUR / Total EUR)
-    set_cell_value(
-        ws,
-        row,
-        DAILY_TOTAL_COL,
-        f"=F{row}+H{row}+J{row}+L{row}+N{row}",
-    )
-    ws.cell(
-        row=row,
-        column=DAILY_TOTAL_COL,
-    ).number_format = '#,##0.00 €'
-
-    write_summary(
-        ws=ws,
-        total_row=total_row,
-        last_data_row=last_data_row,
-        final_amount_row=final_amount_row,
-    )
-
-    # Recalculate formulas when the workbook is opened in Excel.
-    try:
-        workbook.calculation.fullCalcOnLoad = True
-        workbook.calculation.forceFullCalc = True
-        workbook.calculation.calcMode = "auto"
-    except AttributeError:
-        pass
-
-    workbook.save(output_path)
-    workbook.close()
-
+    # Calculate the total meal expenses for the log.
     total_meal_amount = sum(
         get_receipt_amount(receipt)
         for _, _, receipt in eligible_work_times
     )
 
-
-
     print(f"Excel file created: {output_path}")
-    print(f"Eligible work days: {len(eligible_work_times)}")
-    print(f"Total meal expenses: €{total_meal_amount:.2f}")
+    print(
+        f"Eligible work days: "
+        f"{len(eligible_work_times)}"
+    )
+    print(
+        f"Total meal expenses: "
+        f"€{total_meal_amount:.2f}"
+    )
 
     return output_path
