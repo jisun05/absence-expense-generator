@@ -2,7 +2,6 @@ name: Monthly Expense Generator
 
 on:
   schedule:
-    # 매월 5일 오전 9시 (독일 겨울철 기준)
     - cron: '0 8 5 * *'
   workflow_dispatch:
 
@@ -25,4 +24,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run expense generator
+        env:
+          ABSENCE_CLIENT_ID: ${{ secrets.ABSENCE_CLIENT_ID }}
+          ABSENCE_CLIENT_SECRET: ${{ secrets.ABSENCE_CLIENT_SECRET }}
         run: python main.py
