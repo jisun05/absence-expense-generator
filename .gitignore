@@ -21,6 +21,9 @@ output/
 *.xlsx
 !templates/*.xlsx
 
+# Private Excel template
+templates/travel_expense_template.xlsx
+
 # Google API credentials
 credentials.json
 token.json
