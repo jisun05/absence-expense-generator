@@ -17,7 +17,17 @@ def create_receipt_pdf(files, output_path):
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    for file in files:
+    def get_receipt_day(file):
+        filename = os.path.splitext(file["name"])[0]
+
+        try:
+            return int(filename)
+        except ValueError:
+            return float("inf")
+
+    sorted_files = sorted(files, key=get_receipt_day)
+
+    for file in sorted_files:
         print(f'Downloading {file["name"]}...')
 
         buffer = download_receipt(file["id"])
