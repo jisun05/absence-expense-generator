@@ -1,5 +1,5 @@
 Absence Expense Generator
-
+[English](README.md) | [한국어](README.ko.md)
 Python 기반 월별 식대 청구 자동화 프로젝트
 
 1. 프로젝트 개요

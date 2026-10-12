@@ -1,4 +1,5 @@
 Absence Expense Generator
+[English](README.md) | [한국어](README.ko.md)
 
 A Python-based application for automating monthly meal expense claims.
 
