@@ -35,15 +35,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      # 5. Google OAuth 인증 파일 생성
-      - name: Create Google credentials file
-        env:
-          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-        run: |
-          printf '%s' "$GOOGLE_CREDENTIALS_JSON" > credentials.json
-
-          
+         
 
       # 6. 월별 식대 청구 프로그램 실행
       - name: Run expense generator
