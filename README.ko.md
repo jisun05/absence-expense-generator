@@ -13,17 +13,15 @@ Absence Expense Generator는 absence.io의 근무 기록과 Google Drive에
 통합했습니다. GitHub Actions에서 실행할 수 있도록 자동화 워크플로도
 구성했습니다.
 
-현재 상태: 2026년 9월 데이터 처리에서 영수증 PDF 생성까지
-확인했습니다. GitHub Actions 실행 중 Excel 템플릿 파일을 찾지 못해
-Excel 보고서 생성 단계는 현재 수정이 필요한 상태입니다. PostgreSQL
-저장 코드는 추후 재활성화를 위해 유지하고 있으며, 제출용 실행
+현재 상태: 2026년 9월 데이터 처리에서 영수증 PDF,EXCEL 생성까지
+확인했습니다.  PostgreSQL 저장 코드는 추후 재활성화를 위해 유지하고 있으며 실행
 흐름에서는 비활성화되어 있습니다.
 
 2. 해결하려는 문제
 
 월별 식대 청구에는 근무 시간 확인, 영수증 수집, 날짜 대조, 결제 금액
 확인, 증빙 파일 정리 등 반복 작업이 필요합니다. 이 프로젝트는 해당
-과정을 자동화해 수작업을 줄이고, 정해진 규칙에 따라 청구 대상과 금액을
+과정을 자동화해 수작업을 줄이고 정해진 규칙에 따라 청구 대상과 금액을
 계산하도록 설계했습니다.
 
 ## Architecture
@@ -67,7 +65,7 @@ OCR 및 데이터 추출 --- Tesseract OCR을 사용해 영수증의 날짜와
 최종 청구 금액은 청구 대상 영수증의 실제 결제 금액을 기준으로
 계산합니다.
 
-식대 환급 상한은 코드에서 일일 €6.50으로 설정되어 있습니다.
+
 
 5. 기술 스택
 
@@ -81,11 +79,9 @@ OCR 및 데이터 추출 --- Tesseract OCR을 사용해 영수증의 날짜와
 
 OCR                                 Tesseract OCR (eng+deu)
 
-데이터베이스                        PostgreSQL 저장 코드 구현; 현재
-제출용 실행 흐름에서는 비활성화
+데이터베이스                        PostgreSQL 저장 코드 구현 현재 비활성화
 
-컨테이너                            Docker, Docker Compose를 이용한
-데이터베이스 실행 환경 구성
+컨테이너                            Docker, Docker Compose를 이용한 데이터베이스 실행 환경 구성
 
 테스트                              pytest
 
@@ -107,10 +103,9 @@ CI/CD 자동화                        GitHub Actions
 
 생성 확인 파일: output/receipts_2026_09.pdf
 
-위 수치는 특정 실행 로그에서 확인한 예시이며, 성능 지표나 모든 달에 대한
-보장 결과는 아닙니다.
+.
 
-테스트 및 자동화
+7. 테스트 및 자동화
 
 pytest 기반 자동 테스트를 구성했으며, 최근 테스트 실행에서 24개
 테스트 통과를 확인했습니다.
@@ -118,15 +113,11 @@ pytest 기반 자동 테스트를 구성했으며, 최근 테스트 실행에서
 GitHub Actions 워크플로를 구성해 Python 환경 설정, Tesseract 설치,
 의존성 설치 및 프로그램 실행을 자동화했습니다.
 
-워크플로의 최근 실행에서는 데이터 조회와 영수증 처리, PDF 생성까지
-진행됐습니다.
+워크플로의 최근 실행에서는 데이터 조회와 영수증 처리, PDF,EXCEL 생성까지
+완료했습니다.
 
-현재 남은 문제: 공개 저장소의 실행 환경에서 Excel 템플릿
-templates/travel_expense_template.xlsx를 찾지 못해 Excel 생성
-단계가 실패했습니다. 회사 정보가 포함된 원본 템플릿은 공개 저장소에
-올리지 않는 방향으로 처리 중입니다.
 
-7. 보안 및 설정
+8. 보안 및 설정
 
 외부 서비스 인증 정보는 소스 코드에 직접 작성하지 않고 환경 변수와
 GitHub Actions Secrets를 통해 전달하도록 구성했습니다.
@@ -149,7 +140,7 @@ Google API 인증에 필요한 자격 증명
 않아야 합니다. 공개 저장소에서는 회사 템플릿이나 기밀 정보를 제거한
 파일만 사용해야 합니다.
 
-8. 실행 방법
+9. 실행 방법
 
 로컬 실행
 
@@ -168,7 +159,7 @@ python main.py
 
 실행 전에는 로컬 설정 파일과 템플릿 경로가 준비되어 있는지 확인해야
 합니다. 필요한 환경 변수와 인증 방식은 실제 프로젝트 설정에 맞춰
-제공해야 하며, 비밀값을 README에 기록하지 않습니다.
+제공해야 하며 비밀값을 README에 기록하지 않습니다.
 
 GitHub Actions
 
@@ -176,33 +167,33 @@ GitHub Actions
 구성했습니다. 월별 예약 실행은 매월 5일 UTC 08:00으로 설정되어 있으며,
 독일 현지 시각으로는 서머타임에 따라 09:00 또는 10:00입니다.
 
-현재 Excel 템플릿을 안전하게 제공하는 방식이 확정되지 않아, GitHub
-Actions의 Excel 생성 단계는 완전한 성공 상태가 아닙니다.
 
-9. 프로젝트 구조
+10. 프로젝트 구조
 
 주요 디렉터리와 파일의 역할은 다음과 같습니다. 세부 파일명은 저장소의
 최신 상태에 따라 달라질 수 있습니다.
 
 absence-expense-generator/
-├── .github/workflows/  # GitHub Actions 워크플로
+├── .github/workflows/  # GitHub Actions
 ├── absence_io/         # absence.io API 연동
-├── batch/              # 월별 배치 처리
-├── config/             # 설정 및 환경 변수 처리
-├── database/           # PostgreSQL 관련 코드
-├── expense/            # 청구 규칙 및 비용 계산
-├── receipts/           # Google Drive, OCR, 영수증 처리 및 PDF
+├── batch/              # 월별 정산 처리
+├── config/             # 설정 관리
+├── database/           # PostgreSQL 연동
+├── docs/               # 프로젝트 문서 및 시퀀스 다이어그램
+├── expense/            # 근무 시간 및 식대 계산
+├── receipts/           # 영수증 처리, OCR, PDF 생성
 ├── reports/            # Excel 보고서 생성
-├── tests/              # 자동 테스트
-├── templates/          # 보고서 템플릿
+├── templates/          # Excel 템플릿
+├── tests/              # 테스트 코드
+├── utils/              # 날짜 관련 유틸리티
 ├── output/             # 생성된 보고서
 ├── main.py             # 실행 진입점
-└── requirements.txt    # Python 의존성
+├── requirements.txt    # Python 의존성
+├── .env.example        # 환경 변수 예시
+├── .gitignore
+└── README.md
 
-10. 향후 개선 사항
-
-GitHub Actions에서 공개 가능한 Excel 템플릿을 안전하게 제공하고
-Excel 생성까지 성공하도록 수정
+11.향후 개선 사항
 
 제출용으로 비활성화한 PostgreSQL 저장 흐름 재연결 및 통합 테스트
 
@@ -211,11 +202,6 @@ OCR 인식 실패 및 날짜·금액 매칭 실패에 대한 오류 보고 강�
 실행 로그와 결과 파일 보관 정책 정리
 
 월별 실행 결과를 기준으로 예외 상황 테스트 추가
-
-11. 저장소
+12. 저장소
 
 GitHub: https://github.com/jisun05/absence-expense-generator
-
-이 프로젝트는 외부 API 연동, OCR 기반 문서 처리, 규칙 기반 데이터 검증,
-보고서 생성, 테스트 및 CI 자동화를 통합한 Python 배치 자동화
-프로젝트입니다.

@@ -1,278 +1,168 @@
-# Absence Expense Generator
+Absence Expense Generator
 
-Automate monthly meal expense claims by combining work attendance records,
-receipt processing, and expense report generation.
+A Python-based application for automating monthly meal expense claims.
 
-This project integrates the absence.io API, Google Drive, OCR, PostgreSQL,
-and Excel/PDF generation to reduce manual work in monthly expense reporting.
+## 1. Project Overview
 
-[한국어 README](README.ko.md)
+Absence Expense Generator is a Python application that generates monthly meal expense reports by integrating work-time records from absence.io with receipts stored in Google Drive.
 
+It combines work-time retrieval, receipt downloads, OCR-based date and amount extraction, work-date and receipt-date matching, eligibility validation, and report generation into a single batch workflow. GitHub Actions workflows are also configured to support automated execution.
+
+**Current Status:** Successfully processed September 2026 data and generated receipt PDF and Excel reports. PostgreSQL persistence code is retained for potential future reactivation but is currently disabled in the execution flow.
+
+## 2. Problem Statement
+
+Preparing monthly meal expense claims involves repetitive tasks such as verifying working hours, collecting receipts, matching dates, checking payment amounts, and organizing supporting documents.
+
+This project automates these tasks to reduce manual work and calculate eligible claims according to predefined rules.
 
 ## Architecture
 
 ![System Architecture](docs/absence_expense_sequence_diagram.png)
 
+## 3. Processing Workflow
 
+1. **Work-Time Retrieval** — Retrieves work-time records for the target month through the absence.io API.
 
+2. **Receipt Collection** — Uses the Google Drive API and OAuth authentication to list and download receipt files from a designated folder.
 
-## Features
+3. **OCR and Data Extraction** — Uses Tesseract OCR to extract receipt dates and payment amounts. OCR is configured to support English and German (`eng+deu`).
 
-- **Attendance Integration**
-  - Retrieve work time records from the absence.io API.
-  - Summarize daily working hours.
-  - Calculate elapsed working time from clock-in to clock-out.
+4. **Eligibility Validation** — Checks working hours and dates, then matches work records with receipts.
 
-- **Receipt Processing**
-  - Retrieve receipt images from Google Drive.
-  - Extract receipt amounts and dates using OCR.
-  - Match receipts with attendance records by date.
-  - Filter receipts according to expense eligibility rules.
+5. **Expense Calculation** — Calculates claim amounts based on the actual payment amounts of eligible receipts.
 
-- **Expense Calculation**
-  - Calculate eligible meal reimbursements.
-  - Include only eligible workdays with matching receipts.
-  - Exclude workdays without receipts and receipts without eligible attendance.
+6. **Report Generation** — Generates a monthly Excel expense report and a PDF containing the eligible receipt images.
 
-- **Excel Report Generation**
-  - Generate monthly expense reports using an Excel template.
-  - Preserve the template's formatting and formulas.
-  - Support up to 25 eligible workdays.
-  - Calculate daily expenses and the final reimbursement amount.
+7. **Automated Execution** — GitHub Actions workflows support scheduled monthly processing and manual execution.
 
-- **PDF Generation**
-  - Generate a PDF containing receipt images.
-  - Organize receipts by date.
+## 4. Business Rules
 
-- **Database Integration**
-  - Store work records, receipts, and expenses in PostgreSQL.
+- A workday must contain at least eight hours of work to be considered eligible for a meal expense claim.
+- The work date must match the receipt date.
+- Receipts that fail the eligibility checks or cannot be matched to work records are excluded from the expense calculation.
+- The final claim amount is calculated from the actual payment amounts of eligible receipts.
 
-- **Automated Testing**
-  - Test expense calculations, receipt parsing, data transformation,
-    and database repository operations.
+## 5. Technology Stack
 
-## Tech Stack
-
-| Category | Technologies |
-| --- | --- |
+| Category | Technology |
+|---|---|
 | Language | Python |
-| API Integration | requests, absence.io API |
-| Authentication | Google OAuth 2.0 |
-| Cloud Storage | Google Drive API |
-| OCR | Tesseract, pytesseract |
-| Image Processing | Pillow |
-| Excel | openpyxl |
-| Database | PostgreSQL |
-| Containerization | Docker, Docker Compose |
+| External APIs | absence.io API, Google Drive API |
+| Authentication | API credentials, Google OAuth |
+| OCR | Tesseract OCR (`eng+deu`) |
+| Database | PostgreSQL persistence code implemented but currently disabled |
+| Containerization | Docker, Docker Compose for the database environment |
 | Testing | pytest |
+| CI/CD Automation | GitHub Actions |
+| Reports | Excel, PDF |
 
-## Project Structure
+## 6. Implementation Results and Validation
 
-```text
-absence-expense-generator/
-├── absence_io/       # absence.io API integration
-├── batch/            # Monthly expense processing workflow
-├── config/           # Application settings
-├── database/         # Database connection and repositories
-├── expense/          # Expense calculation and Excel generation
-├── receipts/         # Receipt retrieval, OCR, parsing, and PDF generation
-├── templates/        # Public example Excel template
-├── tests/            # Automated tests
-├── output/           # Generated reports
-├── main.py           # Application entry point
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── README.md
-└── README.ko.md
-```
+### Verified Execution Results
 
-## How It Works
+The execution logs for September 2026 confirmed the following results:
 
-```text
-absence.io API
-      |
-      v
-Retrieve Attendance Records
-      |
-      v
-Summarize Daily Working Hours
-      |
-      +-------------------------+
-                                |
-Google Drive                    |
-      |                         |
-      v                         |
-Retrieve Receipt Images         |
-      |                         |
-      v                         |
-Extract Amounts and Dates       |
-      |                         |
-      +------------+------------+
-                   |
-                   v
-        Match Attendance and Receipts
-                   |
-                   v
-          Calculate Expenses
-                   |
-          +--------+--------+
-          |                 |
-          v                 v
-      Excel Report      Receipt PDF
-          |
-          v
-    Monthly Expense Claim
-```
+- **Eligible workdays:** 6
+- **Total calculated meal reimbursement:** €39.00
+- **Receipts processed:** 6
+- **Generated PDF:** `output/receipts_2026_09.pdf`
 
-## Expense Eligibility Rules
+The Excel report is also generated by the monthly processing workflow.
 
-A workday is eligible for meal reimbursement when:
+## 7. Testing and Automation
 
-1. The recorded working duration is at least 8 hours.
-2. A receipt exists for the same date.
-3. The receipt satisfies the project's eligibility rules.
+Automated tests are implemented using pytest. The latest reported test run passed all 24 tests.
 
-The application excludes workdays without matching receipts and receipts
-without eligible attendance records.
+GitHub Actions workflows automate environment setup, Tesseract installation, dependency installation, and application execution.
 
-The reimbursement amount is based on the eligible receipt amount.
+A recent workflow run completed data retrieval, receipt processing, and PDF and Excel report generation.
 
-## Prerequisites
+## 8. Security and Configuration
 
-- Python 3.13.2
-- Tesseract OCR
-- PostgreSQL 16
-- An absence.io API account and credentials
-- A Google Cloud project with the Google Drive API enabled
-- Docker Desktop and Docker Compose (if using Docker)
+External service credentials are configured through environment variables and GitHub Actions Secrets rather than being hardcoded in the source code.
 
-## Installation
+Key configuration variables include:
 
-### 1. Clone the Repository
+- `ABSENCE_CLIENT_ID`
+- `ABSENCE_CLIENT_SECRET`
+- `ABSENCE_USER_ID`
+- `GOOGLE_DRIVE_RECEIPT_FOLDER_ID`
+- `GOOGLE_TOKEN_JSON`
+- Google API authentication credentials
+
+**Security considerations:**
+
+- Never commit actual credentials, OAuth tokens, or other secrets to the repository.
+- Do not commit personal receipts or confidential company information.
+- Use sanitized templates without confidential information in public repositories.
+
+## 9. Getting Started
+
+### Local Execution
+
+1. Set up a Python 3.12 environment.
+2. Install the project dependencies.
+3. Configure the required API credentials and environment variables.
+4. Ensure Google Drive access is configured and Tesseract OCR is installed.
+5. Run the application from the project root.
+
+Install dependencies:
 
 ```bash
-git clone https://github.com/jisun05/absence-expense-generator.git
-cd absence-expense-generator
-```
+pip install -r requirements.txt
+````
 
-### 2. Create a Virtual Environment
-
-```bash
-python -m venv .venv
-```
-
-Activate it on Windows:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-
-Create a local `.env` file based on `.env.example`.
-
-Add the required API credentials and database configuration.
-
-Do not commit `.env` or any real credentials to GitHub.
-
-### 5. Configure Google Drive Authentication
-
-Configure Google OAuth credentials for the Google Drive API.
-
-Place your local `credentials.json` in the location expected by the application.
-Complete the OAuth authorization flow to generate `token.json` if required.
-
-Both files contain sensitive authentication information and must remain private.
-
-### 6. Configure Tesseract OCR
-
-Install Tesseract OCR and ensure that it is available to the application.
-
-On Windows, if Tesseract is installed in the default location, configure
-`pytesseract` to use:
-
-```text
-C:\Program Files\Tesseract-OCR\tesseract.exe
-```
-
-Adjust the path if Tesseract is installed elsewhere.
-
-### 7. Start PostgreSQL
-
-If using Docker Compose, review the database configuration and start the
-required services:
-
-```bash
-docker compose up -d
-```
-
-Make sure the database configuration matches your local `.env` settings.
-
-## Usage
-
-After configuring the API credentials, Google Drive access, and database,
-run the application:
+Run the application:
 
 ```bash
 python main.py
 ```
 
-The application executes the monthly expense workflow, which retrieves
-attendance records, processes receipts, calculates eligible expenses,
-and generates reports.
+Before running the application, ensure that the required configuration, authentication credentials, and Excel templates are available.
 
-Generated files are saved in the configured output directory.
+Refer to the project configuration for the exact environment variables and authentication requirements. Never include secret values in this README.
 
-## Excel Template
+### GitHub Actions
 
-A sanitized example template is available in:
+The workflows support scheduled execution and manual execution through `workflow_dispatch`.
 
-`templates/travel_expense_template_public.xlsx`
+The monthly scheduled run is configured for the **5th of each month at 08:00 UTC**. This corresponds to **09:00 or 10:00 in Germany**, depending on daylight saving time.
 
-The public template is provided for demonstration purposes.
+## 10. Project Structure
 
-The original working template may contain company-specific information.
-Keep private templates and confidential company data out of the public repository.
-
-## Testing
-
-Run the automated tests with:
-
-```bash
-python -m pytest -v
+```text
+absence-expense-generator/
+├── .github/workflows/  # GitHub Actions workflows
+├── absence_io/         # absence.io API integration
+├── batch/              # Monthly expense processing
+├── config/             # Application configuration
+├── database/           # PostgreSQL integration
+├── docs/               # Project documentation and sequence diagram
+├── expense/            # Work-time transformation and expense calculation
+├── receipts/           # Receipt processing, OCR, and PDF generation
+├── reports/            # Excel report generation
+├── templates/          # Excel templates
+├── tests/              # Automated tests
+├── utils/              # Date utilities
+├── output/             # Generated reports
+├── main.py             # Application entry point
+├── requirements.txt    # Python dependencies
+├── .env.example        # Example environment variables
+├── .gitignore          # Git ignore rules
+└── README.md            # Project documentation
 ```
 
-## Security
+## 11. Future Improvements
 
-The following files must not be committed if they contain real credentials
-or sensitive information:
+* Reactivate PostgreSQL persistence and add integration tests.
+* Improve error reporting for OCR failures and receipt date or amount extraction issues.
+* Define a retention policy for execution logs and generated reports.
+* Add more edge-case tests based on monthly execution results.
 
-- `.env`
-- `credentials.json`
-- `token.json`
-- Private Excel templates
-- Receipt images containing personal information
-- Generated reports containing personal or financial data
+## 12. Repository
 
-Review `.gitignore` before committing changes.
+GitHub: [https://github.com/jisun05/absence-expense-generator](https://github.com/jisun05/absence-expense-generator)
 
-## Future Improvements
-
-- Improve OCR accuracy and error handling.
-- Add more automated tests for the monthly reporting workflow.
-- Improve configuration and setup validation.
-- Expand report generation and data validation.
-
-## License
-
-This project is intended as a personal portfolio project.
-
-Add a license file if you decide to distribute the code under a specific license.
+```
+```
