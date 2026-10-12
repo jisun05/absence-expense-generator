@@ -8,6 +8,14 @@ and Excel/PDF generation to reduce manual work in monthly expense reporting.
 
 [한국어 README](README.ko.md)
 
+
+## Architecture
+
+![System Architecture](docs/absence_expense_sequence_diagram.png)
+
+
+
+
 ## Features
 
 - **Attendance Integration**
